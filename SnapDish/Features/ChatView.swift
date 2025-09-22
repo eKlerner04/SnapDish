@@ -1,11 +1,13 @@
 import SwiftUI
 
 struct ChatView: View {
+    @Environment(\.dismiss) private var dismiss
+
     @State private var input: String = ""
     @State private var reply: String = "Frag mich etwas…"
     @State private var isLoading: Bool = false
 
-    private let baseURL = URL(string: "http://127.0.0.1:3000")!
+    let config: AppConfig
 
     var body: some View {
         VStack(spacing: 16) {
@@ -39,11 +41,18 @@ struct ChatView: View {
             .disabled(isLoading || input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .padding()
+        .navigationTitle("Chat")
+        .toolbar {
+        }
     }
 
     private func sendMessage() async {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        guard let baseURL = config.resolvedBaseURL else {
+            reply = "Bitte Server-URL in den Einstellungen setzen."
+            return
+        }
 
         isLoading = true
         defer { isLoading = false }
@@ -73,5 +82,5 @@ struct ChatView: View {
 }
 
 #Preview {
-    ChatView()
+    ChatView(config: AppConfig())
 }

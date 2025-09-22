@@ -11,11 +11,11 @@ import SwiftUI
 struct SnapDishApp: App {
     var body: some Scene {
         WindowGroup {
-            HealthDemoView()
+            ContentView()
         }
     }
 }
 
 #Preview {
-    HealthDemoView()
+    ContentView()
 }

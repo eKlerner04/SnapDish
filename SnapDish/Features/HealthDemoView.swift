@@ -5,7 +5,11 @@ struct HealthDemoView: View {
     @State private var input = "moin..."
     @State private var output = ""
 
-    private let api = APIClient(baseURL: URL(string: "http://127.0.0.1:3000")!)
+    let config: AppConfig
+
+    private var api: APIClient? {
+        try? APIProvider.makeClient(config: config)
+    }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -18,6 +22,10 @@ struct HealthDemoView: View {
 
             Button("Verbessern") {
                 Task {
+                    guard let api else {
+                        output = "Server-URL nicht gesetzt."
+                        return
+                    }
                     do {
                         let res = try await api.improveEmail(text: input)
                         if let err = res.error, !err.isEmpty {
@@ -39,6 +47,10 @@ struct HealthDemoView: View {
         }
         .padding()
         .task {
+            guard let api else {
+                healthText = "Server-URL fehlt"
+                return
+            }
             do {
                 let res = try await api.health()
                 healthText = res.status
@@ -50,5 +62,5 @@ struct HealthDemoView: View {
 }
 
 #Preview {
-    HealthDemoView()
+    HealthDemoView(config: AppConfig())
 }
