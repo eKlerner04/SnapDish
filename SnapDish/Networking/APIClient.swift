@@ -83,6 +83,10 @@ struct GenerateRecipesResponse: Codable { let recipes: [Recipe] }
 struct VisionIngredientsRequest: Codable { let imageBase64: String }
 struct VisionIngredientsResponse: Codable { let ingredients: [String] }
 
+// NEU: Shared Ingredients DTOs
+struct IngredientsPayload: Codable { let ingredients: [String] }
+struct IngredientsResponse: Codable { let ingredients: [String] }
+
 // MARK: - API Client
 struct APIClient {
     let baseURL: URL
@@ -225,6 +229,54 @@ struct APIClient {
         let (data, resp) = try await URLSession.shared.data(for: req)
         try ensureOK(resp: resp, data: data, context: "POST /api/lobby/\(lobbyId)/ingredients/vision")
         return try JSONDecoder().decode(VisionIngredientsResponse.self, from: data).ingredients
+    }
+
+    // NEU: Shared Ingredients API
+
+    // GET /api/lobby/:id/ingredients
+    func fetchLobbyIngredients(lobbyId: String) async throws -> [String] {
+        let url = baseURL
+            .appendingPathComponent("api/lobby")
+            .appendingPathComponent(lobbyId)
+            .appendingPathComponent("ingredients")
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        try ensureOK(resp: resp, data: data, context: "GET /api/lobby/\(lobbyId)/ingredients")
+        return try JSONDecoder().decode(IngredientsResponse.self, from: data).ingredients
+    }
+
+    // POST /api/lobby/:id/ingredients (merge)
+    func addLobbyIngredients(lobbyId: String, ingredients: [String]) async throws -> [String] {
+        let url = baseURL
+            .appendingPathComponent("api/lobby")
+            .appendingPathComponent(lobbyId)
+            .appendingPathComponent("ingredients")
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(IngredientsPayload(ingredients: ingredients))
+
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        try ensureOK(resp: resp, data: data, context: "POST /api/lobby/\(lobbyId)/ingredients")
+        return try JSONDecoder().decode(IngredientsResponse.self, from: data).ingredients
+    }
+
+    // DELETE /api/lobby/:id/ingredients
+    func deleteLobbyIngredients(lobbyId: String, ingredients: [String]) async throws -> [String] {
+        let url = baseURL
+            .appendingPathComponent("api/lobby")
+            .appendingPathComponent(lobbyId)
+            .appendingPathComponent("ingredients")
+        var req = URLRequest(url: url)
+        req.httpMethod = "DELETE"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(IngredientsPayload(ingredients: ingredients))
+
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        try ensureOK(resp: resp, data: data, context: "DELETE /api/lobby/\(lobbyId)/ingredients")
+        return try JSONDecoder().decode(IngredientsResponse.self, from: data).ingredients
     }
 
     // MARK: - Helpers

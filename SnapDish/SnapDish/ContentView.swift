@@ -10,60 +10,39 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
-                Text("Willkommen bei SnapDish")
-                    .font(.title2)
-                    .bold()
-
-                VStack(spacing: 4) {
-                    Text("Server:")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(config.serverBaseURL.isEmpty ? "— nicht gesetzt —" : config.serverBaseURL)
-                        .font(.footnote)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(config.serverBaseURL.isEmpty ? .red : .secondary)
-                }
-                .frame(maxWidth: .infinity)
-
-                NavigationLink {
-                    ChatView(config: config)
-                } label: {
-                    Text("Zum Chat")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(api == nil)
-
-                NavigationLink {
-                    HealthDemoView(config: config)
-                } label: {
-                    Text("Health-Demo öffnen")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-
-                Divider()
-
                 if let api {
-                    NavigationLink {
-                        CreateLobbyView(api: api)
-                    } label: {
-                        Text("Lobby erstellen")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
+                    VStack(spacing: 16) {
+                        NavigationLink {
+                            CreateLobbyView(api: api)
+                        } label: {
+                            BigActionButtonLabel(
+                                icon: "plus.circle.fill",
+                                title: "Lobby erstellen",
+                                subtitle: "Starte eine neue Kochrunde"
+                            )
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .buttonBorderShape(.roundedRectangle(radius: 16))
 
-                    NavigationLink {
-                        JoinLobbyView(api: api)
-                    } label: {
-                        Text("Lobby beitreten")
+                        NavigationLink {
+                            JoinLobbyView(api: api)
+                        } label: {
+                            BigActionButtonLabel(
+                                icon: "person.2.fill",
+                                title: "Lobby beitreten",
+                                subtitle: "Mit Code einer Lobby beitreten"
+                            )
+                        }
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.roundedRectangle(radius: 16))
+                    }
+                } else {
+                    VStack(spacing: 8) {
+                        Text("Bitte Server-URL in den Einstellungen setzen.")
+                            .foregroundStyle(.red)
+                            .multilineTextAlignment(.center)
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
-                } else {
-                    Text("Bitte Server-URL in den Einstellungen setzen.")
-                        .foregroundStyle(.red)
-                        .multilineTextAlignment(.center)
                 }
 
                 Spacer()
@@ -77,8 +56,43 @@ struct ContentView: View {
                 .buttonStyle(.bordered)
             }
             .padding()
-            .navigationTitle("Start")
+            .navigationTitle("SnapDish")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        ChatView(config: config)
+                    } label: {
+                        Image(systemName: "bubble.left.and.bubble.right")
+                    }
+                    .disabled(api == nil)
+                    .accessibilityLabel("Zum Chat")
+                }
+            }
         }
+    }
+}
+
+private struct BigActionButtonLabel: View {
+    let icon: String
+    let title: String
+    var subtitle: String? = nil
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 34, weight: .semibold))
+            Text(title)
+                .font(.title3)
+                .bold()
+            if let subtitle {
+                Text(subtitle)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 18)
+        .contentShape(Rectangle())
     }
 }
 

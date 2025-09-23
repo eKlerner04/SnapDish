@@ -56,12 +56,14 @@ struct CreateRecipesView: View {
     @State private var generated: [Recipe] = []
 
     @State private var isGenerating = false
+    @State private var isSyncing = false
+    @State private var isRecognizing = false
+
     @State private var errorText: String?
     @State private var infoText: String?
 
     @State private var showImagePicker = false
     @State private var capturedImages: [UIImage] = []
-    @State private var isRecognizing = false
 
     private var imagePickerView: some View {
         ImagePicker(
@@ -82,6 +84,10 @@ struct CreateRecipesView: View {
                 Section("Lobby") {
                     LabeledContent("Code", value: lobby.code)
                     LabeledContent("Lobby-ID", value: lobby.id)
+                    Text("Diese Zutatenliste wird mit allen Mitgliedern der Lobby geteilt.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Section("Zutaten hinzufügen") {
@@ -89,12 +95,13 @@ struct CreateRecipesView: View {
                         TextField("z. B. Tomate, Mozzarella, Basilikum", text: $ingredientInput)
                             .textInputAutocapitalization(.never)
                             .disableAutocorrection(true)
+                            .keyboardType(.asciiCapable)
                         Button {
-                            addIngredient()
+                            Task { await addIngredientFromInput() }
                         } label: {
                             Image(systemName: "plus.circle.fill")
                         }
-                        .disabled(ingredientInputTrimmed.isEmpty)
+                        .disabled(ingredientInputTrimmed.isEmpty || isSyncing)
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
@@ -150,17 +157,25 @@ struct CreateRecipesView: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(isRecognizing || capturedImages.isEmpty)
 
+                    if isSyncing {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                            Text("Synchronisiere Zutaten…")
+                        }
+                    }
+
                     if !ingredients.isEmpty {
                         ForEach(ingredients, id: \.self) { ing in
                             HStack {
                                 Text(ing)
                                 Spacer()
                                 Button(role: .destructive) {
-                                    removeIngredient(ing)
+                                    Task { await removeIngredient(ing) }
                                 } label: {
                                     Image(systemName: "trash")
                                 }
                                 .buttonStyle(.borderless)
+                                .disabled(isSyncing)
                             }
                         }
                     } else {
@@ -215,26 +230,71 @@ struct CreateRecipesView: View {
         .sheet(isPresented: $showImagePicker) {
             imagePickerView
         }
+        .task {
+            await loadIngredients()
+        }
     }
 
     private var ingredientInputTrimmed: String {
         ingredientInput.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func addIngredient() {
+    // MARK: - Server Sync
+
+    private func loadIngredients() async {
+        errorText = nil
+        infoText = nil
+        isSyncing = true
+        defer { isSyncing = false }
+        do {
+            let list = try await api.fetchLobbyIngredients(lobbyId: lobby.id)
+            ingredients = list
+        } catch {
+            errorText = "Zutaten konnten nicht geladen werden: \(error.localizedDescription)"
+        }
+    }
+
+    private func addIngredientFromInput() async {
         let parts = ingredientInputTrimmed
             .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
 
-        ingredients.append(contentsOf: parts)
-        ingredients = Array(Set(ingredients)).sorted()
+        guard !parts.isEmpty else { return }
         ingredientInput = ""
+
+        await addIngredients(parts)
     }
 
-    private func removeIngredient(_ ing: String) {
-        ingredients.removeAll { $0.caseInsensitiveCompare(ing) == .orderedSame }
+    private func addIngredients(_ list: [String]) async {
+        errorText = nil
+        infoText = nil
+        isSyncing = true
+        defer { isSyncing = false }
+        do {
+            let updated = try await api.addLobbyIngredients(lobbyId: lobby.id, ingredients: list)
+            ingredients = updated
+            infoText = "Zutatenliste aktualisiert (\(list.count) hinzugefügt)."
+        } catch {
+            errorText = "Zutaten konnten nicht hinzugefügt werden: \(error.localizedDescription)"
+        }
     }
+
+    private func removeIngredient(_ ing: String) async {
+        errorText = nil
+        infoText = nil
+        isSyncing = true
+        defer { isSyncing = false }
+        do {
+            let updated = try await api.deleteLobbyIngredients(lobbyId: lobby.id, ingredients: [ing])
+            ingredients = updated
+            infoText = "\"\(ing)\" entfernt."
+        } catch {
+            errorText = "Zutat konnte nicht entfernt werden: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - AI
 
     private func generate() async {
         errorText = nil
@@ -243,7 +303,11 @@ struct CreateRecipesView: View {
         defer { isGenerating = false }
 
         do {
-            let res = try await api.generateRecipes(lobbyId: lobby.id, ingredients: ingredients)
+            // Sicherheits-Refresh, falls andere Mitglieder parallel editiert haben
+            let latest = try await api.fetchLobbyIngredients(lobbyId: lobby.id)
+            ingredients = latest
+
+            let res = try await api.generateRecipes(lobbyId: lobby.id, ingredients: latest)
             generated = res
             infoText = "8 Rezepte generiert und gespeichert."
             NotificationCenter.default.post(name: .recipesUpdated, object: nil)
@@ -258,18 +322,28 @@ struct CreateRecipesView: View {
         isRecognizing = true
         defer { isRecognizing = false }
 
-        var allDetected: Set<String> = []
+        var allDetected: [String] = []
         do {
             for img in capturedImages {
                 guard let data = img.jpegData(compressionQuality: 0.8) else { continue }
                 let detected = try await api.extractIngredientsFromImage(lobbyId: lobby.id, imageData: data)
-                allDetected.formUnion(detected.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) })
+                allDetected.append(contentsOf: detected)
             }
-            ingredients = Array(Set(ingredients).union(allDetected)).sorted()
+
+            // Merge serverseitig (dedupe übernimmt der Server)
+            if !allDetected.isEmpty {
+                await addIngredients(allDetected)
+            }
             infoText = "\(allDetected.count) Zutaten von \(capturedImages.count) Fotos erkannt."
             capturedImages = []
         } catch {
             errorText = "Zutaten konnten nicht erkannt werden: \(error.localizedDescription)"
         }
     }
+}
+
+#Preview {
+    CreateRecipesView(api: APIClient(baseURL: URL(string: "http://127.0.0.1:3000")!),
+                      lobby: Lobby(id: "demo", hostId: "host", code: "Iskto8", createdAt: ""),
+                      host: User(id: "host", name: "Emil", createdAt: ""))
 }

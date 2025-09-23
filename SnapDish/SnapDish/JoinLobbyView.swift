@@ -100,7 +100,6 @@ struct JoinLobbyView: View {
         do {
             let res = try await api.joinLobby(name: nameTrimmed, code: codeTrimmed)
             response = res
-            // Automatisch navigieren
             goToSession = true
         } catch {
             errorText = error.localizedDescription
