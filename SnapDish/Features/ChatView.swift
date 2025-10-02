@@ -92,7 +92,7 @@ struct ChatView: View {
             // Chatverlauf
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .center, spacing: 12) {
+                    LazyVStack(spacing: 12) {
                         ForEach(vm.messages) { msg in
                             ChatBubble(message: msg)
                                 .transition(.move(edge: msg.role == .user ? .trailing : .leading).combined(with: .opacity))
@@ -122,6 +122,7 @@ struct ChatView: View {
         .navigationTitle("Chat")
         .navigationBarTitleDisplayMode(.inline)
         .scrollDismissesKeyboardCompat()
+        .snapDishBackground()
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -182,7 +183,13 @@ private struct ChatBubble: View {
 
     private var bubbleBackground: some ShapeStyle {
         if isUser {
-            return AnyShapeStyle(Color.accentColor)
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [Color.snapDishBlue, Color(red: 0.1, green: 0.4, blue: 0.8)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
         } else if isSystem {
             return AnyShapeStyle(Color(.tertiarySystemFill))
         } else {
@@ -191,22 +198,42 @@ private struct ChatBubble: View {
     }
 
     var body: some View {
-        VStack(spacing: 4) {
-            Text(message.text)
-                .font(.body)
-                .foregroundStyle(isUser ? Color.white : (isSystem ? .secondary : .primary))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(bubbleBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .frame(maxWidth: 280, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
+        HStack(alignment: .bottom) {
+            if !isUser {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(message.text)
+                        .font(.body)
+                        .foregroundStyle(isUser ? Color.white : (isSystem ? .secondary : .primary))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(bubbleBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .frame(maxWidth: 280, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
 
-            Text(message.date, style: .time)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
+                    Text(message.date, style: .time)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 50)
+            } else {
+                Spacer(minLength: 50)
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(message.text)
+                        .font(.body)
+                        .foregroundStyle(isUser ? Color.white : (isSystem ? .secondary : .primary))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(bubbleBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .frame(maxWidth: 280, alignment: .trailing)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(message.date, style: .time)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
         .frame(maxWidth: .infinity)
     }
@@ -214,24 +241,26 @@ private struct ChatBubble: View {
 
 private struct TypingBubble: View {
     var body: some View {
-        VStack(spacing: 4) {
-            HStack {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 10) {
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                        Text("Schreibt …")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(.secondarySystemBackground)))
+        HStack {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 10) {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .scaleEffect(0.8)
+                    Text("Schreibt …")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
-                Spacer()
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color(.secondarySystemBackground))
+                )
             }
-            .frame(maxWidth: .infinity)
+            Spacer()
         }
+        .frame(maxWidth: .infinity)
     }
 }
 

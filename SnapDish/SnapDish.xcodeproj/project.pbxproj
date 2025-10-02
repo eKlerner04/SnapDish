@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D6B595842E8EA21B00A8C41E /* videoSplashScreen.mov in Resources */ = {isa = PBXBuildFile; fileRef = D6B595832E8EA21B00A8C41E /* videoSplashScreen.mov */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		D65DCB9F2E7DCA99000FBB98 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +31,7 @@
 		D65DCB912E7DCA96000FBB98 /* SnapDish.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SnapDish.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D65DCB9E2E7DCA99000FBB98 /* SnapDishTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SnapDishTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D65DCBA82E7DCA99000FBB98 /* SnapDishUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SnapDishUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D6B595832E8EA21B00A8C41E /* videoSplashScreen.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = videoSplashScreen.mov; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -98,6 +103,7 @@
 		D65DCB882E7DCA96000FBB98 = {
 			isa = PBXGroup;
 			children = (
+				D6B595832E8EA21B00A8C41E /* videoSplashScreen.mov */,
 				D6EF758F2E7DDC2000F040A5 /* Features */,
 				D6EF758D2E7DDBFF00F040A5 /* Networking */,
 				D65DCB932E7DCA96000FBB98 /* SnapDish */,
@@ -239,6 +245,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D6B595842E8EA21B00A8C41E /* videoSplashScreen.mov in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

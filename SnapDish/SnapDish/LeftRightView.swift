@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct LeftRightView: View {
     let api: APIClient
@@ -129,7 +130,7 @@ struct LeftRightView: View {
         defer { isVoting = false }
 
         do {
-            _ = try await api.sendVote(lobbyId: lobby.id, userId: currentUser.id, recipeId: recipe.id, direction: direction)
+            try await api.sendVote(lobbyId: lobby.id, userId: currentUser.id, recipeId: recipe.id, direction: direction)
             // Zum nächsten Rezept
             index += 1
             if index >= recipes.count {
@@ -194,6 +195,37 @@ struct RecipeSwipeCard: View {
                 .shadow(radius: 8)
 
             VStack(alignment: .leading, spacing: 12) {
+                if let urlString = recipe.imageUrl, !urlString.isEmpty {
+                    if let uiImage = decodeBase64Image(fromDataURL: urlString) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(maxWidth: .infinity, maxHeight: 180)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    } else if let url = URL(string: urlString) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .empty:
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemFill))
+                                    ProgressView()
+                                }
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                            case .failure:
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color(.secondarySystemFill))
+                                    .overlay(Image(systemName: "photo").foregroundStyle(.secondary))
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: 180)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+                }
                 Text(recipe.title)
                     .font(.title2)
                     .bold()
@@ -206,6 +238,46 @@ struct RecipeSwipeCard: View {
                     }
                     .frame(minHeight: 120, maxHeight: 220)
                     .allowsHitTesting(false) // <-- GANZE Karte bleibt dragbar!
+                }
+
+                if !recipe.ingredients.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Zutaten")
+                            .font(.headline)
+                        // Zutaten kompakt listen
+                        ForEach(recipe.ingredients, id: \.self) { ing in
+                            HStack(alignment: .top, spacing: 8) {
+                                Text("•")
+                                Text(ing)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .font(.subheadline)
+                        }
+                    }
+                }
+
+                if !recipe.steps.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Zubereitung")
+                            .font(.headline)
+                        ScrollView(.vertical, showsIndicators: false) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                ForEach(Array(recipe.steps.enumerated()), id: \.offset) { idx, step in
+                                    HStack(alignment: .top, spacing: 8) {
+                                        Text("\(idx + 1).")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                            .foregroundStyle(.primary)
+                                        Text(step)
+                                            .font(.subheadline)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .multilineTextAlignment(.leading)
+                                    }
+                                }
+                            }
+                        }
+                        .frame(maxHeight: 200) // Begrenzte Höhe mit Scroll
+                    }
                 }
             }
             .padding()
@@ -254,6 +326,16 @@ struct RecipeSwipeCard: View {
         .accessibilityLabel(recipe.title)
         .accessibilityHint("Nach rechts für Daumen hoch, nach links für Daumen runter")
     }
+}
+
+// MARK: - Helpers
+private func decodeBase64Image(fromDataURL dataURL: String) -> UIImage? {
+    // erwartet: data:image/png;base64,XXXXX oder data:image/jpeg;base64,XXXXX
+    guard dataURL.hasPrefix("data:image"),
+          let commaIndex = dataURL.firstIndex(of: ",") else { return nil }
+    let base64Part = String(dataURL[dataURL.index(after: commaIndex)...])
+    guard let data = Data(base64Encoded: base64Part) else { return nil }
+    return UIImage(data: data)
 }
 
 #Preview {

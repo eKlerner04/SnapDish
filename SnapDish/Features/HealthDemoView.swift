@@ -46,6 +46,7 @@ struct HealthDemoView: View {
             }
         }
         .padding()
+        .snapDishBackground()
         .task {
             guard let api else {
                 healthText = "Server-URL fehlt"
